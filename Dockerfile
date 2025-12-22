@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
   --mount=type=cache,target=/root/.cache/go-build \
-  make build VERSION=${VERSION} \
+  CGO_ENABLED=0 go build -o outbox-worker \
   && chmod +x /workspace/outbox-worker
 
 FROM gcr.io/distroless/static:nonroot
