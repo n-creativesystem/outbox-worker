@@ -1,0 +1,32 @@
+outbox:
+  producerName: example
+  schema: db
+  tableName: outbox
+database:
+  host: db
+  port: 3306
+  username: admin
+  password: pass1234
+  name: db
+
+publisher:
+  aws:
+    accessKey: dummy
+    secretKey: dummy
+    sns:
+      endpoint: http://localstack:4566
+  refetchTimer:
+    enabled: true
+    interval: 1m
+
+logging:
+  level: info
+  handler: json
+  ## e.g. pattern of multiple handler
+  # handler:
+  #   - json
+  #   - datadog
+tracking:
+  enabled: false
+  agentAddr: otel-collector:4317
+  environment: local

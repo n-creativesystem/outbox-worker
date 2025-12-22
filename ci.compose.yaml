@@ -1,0 +1,21 @@
+version: '3.7'
+services:
+  db:
+    ports:
+      - 3306:3306
+  localstack:
+    ports:
+      - 4566:4566
+  db_checker:
+    build:
+      context: .
+      dockerfile: tools/db_checker/Dockerfile
+    command:
+      - /root/wait-for-it.sh
+      - db:3306
+      - --
+      - echo
+      - container is ready!!
+    depends_on:
+      db:
+        condition: service_healthy

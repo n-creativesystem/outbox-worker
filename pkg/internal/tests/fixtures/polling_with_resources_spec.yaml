@@ -1,0 +1,28 @@
+outbox:
+  tableName: outbox
+  producerName: example
+  findEventLimit: 1000
+database:
+  host: db
+  port: 3306
+  username: admin
+  password: pass1234
+  name: db
+
+publisher:
+  aws:
+    accessKey: dummy
+    secretKey: dummy
+    sns:
+      resources:
+        whitelist:
+          - mock-1
+          - mock-2
+          - mock-3
+        blacklist:
+          - mock-1
+          - mock-4
+
+logging:
+  level: info
+  handler: json

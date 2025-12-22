@@ -1,0 +1,41 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    ":timezone(Asia/Tokyo)"
+  ],
+  "stabilityDays": 7,
+  "labels": [
+    "renovate"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "addLabels": [
+        "golang",
+        "minor"
+      ],
+      "groupName": "Go Modules Updates(minor)",
+      "stabilityDays": 3
+    },
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "addLabels": [
+        "golang",
+        "patch"
+      ],
+      "groupName": "Go Modules Updates(patch)",
+      "stabilityDays": 3
+    }
+  ]
+}
