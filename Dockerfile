@@ -1,11 +1,13 @@
-FROM golang:1.25.5-trixie as builder
+FROM --platform=$BUILDPLATFORM golang:1.25.5-trixie as builder
 
+ARG TARGETARCH
 ARG TARGETPLATFORM
 ARG VERSION=main
 
 ENV GO111MODULE=on \
   GOPATH=/go \
-  GOBIN=/go/bin
+  GOBIN=/go/bin \
+  GOARCH=$TARGETARCH
 
 WORKDIR /workspace
 
