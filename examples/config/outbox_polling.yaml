@@ -1,0 +1,19 @@
+outbox:
+  producerName: example
+database:
+  host: db
+  port: 3306
+  username: admin
+  password: pass1234
+  name: db
+
+publisher:
+  aws:
+    accessKey: dummy
+    secretKey: dummy
+    sns:
+      endpoint: http://localstack:4566
+
+logging:
+  level: info
+  handler: json

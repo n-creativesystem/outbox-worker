@@ -1,0 +1,21 @@
+outbox:
+  # schema: mysql
+  tableName: outbox
+  producerName: example
+  findEventLimit: 4000
+database:
+  host: db
+  port: 3306
+  username: admin
+  password: pass1234
+  name: db
+
+publisher:
+  aws:
+    accessKey: dummy
+    secretKey: dummy
+    sns: {}
+
+logging:
+  level: info
+  handler: json

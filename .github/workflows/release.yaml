@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+  actions: write
+  packages: write
+
+env:
+  IS_RELEASED: ${{ startsWith(github.ref, 'refs/tags/v') }}
+  IMAGE_NAME: outbox-worker
+  GHCR_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+
+jobs:
+  build-version:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.output-version.outputs.VERSION }}
+    steps:
+      - name: tag name to release tag name
+        if: env.IS_RELEASED == 'true'
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+      - name: tag name to release tag name
+        if: env.IS_RELEASED != 'true'
+        run: |
+          echo "VERSION=${{ github.sha }}" >> "$GITHUB_ENV"
+      - name: set output
+        id: output-version
+        run: |
+          echo "VERSION=${{ env.VERSION }}" >> "$GITHUB_OUTPUT"
+  release-and-push:
+    name: Release And Push
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs:
+      - build-version
+    strategy:
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
+    env:
+      VERSION: ${{ needs.build-version.outputs.version }}
+      PLATFORM: ${{ matrix.platform == 'linux/amd64' && 'amd64' || matrix.platform == 'linux/arm64' && 'arm64' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+      - name: Log in ghcr
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push to Repository for release
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: |
+            ${{ env.GHCR_IMAGE_NAME }}:${{ env.VERSION }}-${{ env.PLATFORM }}
+          cache-from: type=gha,scope=${{ env.IMAGE_NAME }}
+          cache-to: type=gha,mode=max,scope=${{ env.IMAGE_NAME }}
+          build-args: |
+            VERSION=${{ env.VERSION }}
+  combine-multi-arch-image:
+    needs:
+      - build-version
+      - release-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERSION: ${{ needs.build-version.outputs.version }}
+    steps:
+      - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+      - name: Enable buildx
+        shell: bash
+        run: docker buildx install
+      - name: Log in ghcr
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and push multi-arch manifest to GHCR
+        shell: bash
+        run: |
+          IMAGE="${{ env.GHCR_IMAGE_NAME }}:${{ env.VERSION }}"
+          docker buildx imagetools create -t "$IMAGE" "$IMAGE-amd64" "$IMAGE-arm64"
