@@ -70,8 +70,22 @@ services:
       default:
         aliases:
           - localhost.localstack.cloud
+  nats:
+    image: nats:2.12.3-scratch
+    command:
+      - -c
+      - /etc/nats/nats-server.conf
+      - -m
+      - "8222"
+      - -D
+    volumes:
+      - nats:/data
+      - ./tools/nats/nats-server.conf:/etc/nats/nats-server.conf
+    ports:
+      - 8222:8222
 volumes:
   mysql:
   localstack:
+  nats:
 networks:
   default:
