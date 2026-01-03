@@ -7,18 +7,21 @@ import (
 	"time"
 
 	"github.com/n-creativesystem/outbox-worker/pkg/config"
-	"github.com/n-creativesystem/outbox-worker/pkg/mock/interfaces"
+	"github.com/n-creativesystem/outbox-worker/pkg/interfaces"
+	mockinterfaces "github.com/n-creativesystem/outbox-worker/pkg/mock/interfaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
-func testBackendPublisher(mockCtl *gomock.Controller, returnErr error) *interfaces.MockBackendPublisher {
-	backendPublisher := interfaces.NewMockBackendPublisher(mockCtl)
+func testBackendPublisher(mockCtl *gomock.Controller, returnErr error) map[string]interfaces.BackendPublisher {
+	backendPublisher := mockinterfaces.NewMockBackendPublisher(mockCtl)
 	// 2秒待つので最大で2回呼ばれる想定
 	// 何度かテストを回していると1回ズレる時があるので最大の設定をしている
 	backendPublisher.EXPECT().FindResources(gomock.Any()).MaxTimes(2).Return(returnErr)
-	return backendPublisher
+	return map[string]interfaces.BackendPublisher{
+		"default": backendPublisher,
+	}
 }
 
 func TestRefetchResourcesWithNoError(t *testing.T) {
