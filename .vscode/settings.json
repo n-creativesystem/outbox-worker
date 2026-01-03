@@ -3,6 +3,8 @@
     "binlog",
     "creativesystem",
     "healthcheck",
+    "jetstream",
+    "natsserver",
     "otel",
     "rollbar"
   ],
