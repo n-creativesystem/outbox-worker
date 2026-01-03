@@ -43,7 +43,7 @@ func TestPublish(t *testing.T) {
 	require.NoError(t, err)
 	ret, err := c.Publish(ctx, interfaces.Outbox{
 		AggregateId:   "1:1",
-		AggregateType: "tests",
+		AggregateType: "rn::nats:::tests",
 		EventType:     "event",
 		Payload:       payload,
 		ProducerName:  "test",

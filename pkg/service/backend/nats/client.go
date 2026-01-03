@@ -69,7 +69,11 @@ func newNatsClient(cfg *config.NATS, opts ...nats.Option) (*natsClient, error) {
 }
 
 func (c *natsClient) Publish(ctx context.Context, outbox interfaces.Outbox) (_ string, rErr error) {
-	resourceName, _ := rn.Parse(outbox.AggregateType)
+	resourceName, err := rn.Parse(outbox.AggregateType)
+	if err != nil {
+		// fallback
+		resourceName.Resource = outbox.AggregateType
+	}
 	ctx = trace.StartSpan(ctx, "PublishOutbox",
 		attribute.String("AggregateId", outbox.AggregateId),
 		attribute.String("AggregateType", outbox.AggregateType),
