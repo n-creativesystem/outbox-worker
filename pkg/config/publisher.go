@@ -11,7 +11,8 @@ var (
 )
 
 type Publisher struct {
-	AWS          AWS          `yaml:"aws"`
+	AWS          *AWS         `yaml:"aws"`
+	Nats         *NATS        `yaml:"nats"`
 	RefetchTimer RefetchTimer `yaml:"refetchTimer"`
 }
 
@@ -22,13 +23,25 @@ func (p *Publisher) Validate() error {
 }
 
 func (p *Publisher) WhitelistResources() []string {
-	return p.AWS.WhitelistResources()
+	values := make([]string, 0, 20)
+	if p.AWS != nil {
+		values = append(values, p.AWS.WhitelistResources()...)
+	}
+	return values
 }
 
 func (p *Publisher) BlacklistResources() []string {
-	return p.AWS.BlacklistResources()
+	values := make([]string, 0, 20)
+	if p.AWS != nil {
+		values = append(values, p.AWS.BlacklistResources()...)
+	}
+	return values
 }
 
 func (p *Publisher) SkipEvents() []string {
-	return p.AWS.SkipEvents()
+	values := make([]string, 0, 20)
+	if p.AWS != nil {
+		values = append(values, p.AWS.SkipEvents()...)
+	}
+	return values
 }
