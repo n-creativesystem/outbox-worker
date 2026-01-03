@@ -17,6 +17,7 @@ import (
 	"github.com/n-creativesystem/outbox-worker/pkg/interfaces"
 	"github.com/n-creativesystem/outbox-worker/pkg/interfaces/aws"
 	"github.com/n-creativesystem/outbox-worker/pkg/internal/logging"
+	"github.com/n-creativesystem/outbox-worker/pkg/service/backend/store"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -29,7 +30,7 @@ type awsSNS struct {
 	client aws.SNSClient
 	conf   *config.AWS
 
-	mpResourceNameToArn Store[*snsInfo]
+	mpResourceNameToArn store.Store[*snsInfo]
 }
 
 var (
@@ -44,11 +45,11 @@ func newAWSSNS(_ context.Context, client aws.SNSClient, conf *config.AWS) *awsSN
 	return &awsSNS{
 		client:              client,
 		conf:                conf,
-		mpResourceNameToArn: Store[*snsInfo]{},
+		mpResourceNameToArn: store.Store[*snsInfo]{},
 	}
 }
 
-func (p *awsSNS) PublishOutbox(ctx context.Context, outbox interfaces.Outbox) (_ string, rErr error) {
+func (p *awsSNS) Publish(ctx context.Context, outbox interfaces.Outbox) (_ string, rErr error) {
 	ctx = trace.StartSpan(ctx, "PublishOutbox",
 		attribute.String("AggregateId", outbox.AggregateId),
 		attribute.String("AggregateType", outbox.AggregateType),
@@ -85,7 +86,7 @@ func (p *awsSNS) PublishOutbox(ctx context.Context, outbox interfaces.Outbox) (_
 	}
 }
 
-func (p *awsSNS) FindBackendResources(ctx context.Context) (rErr error) {
+func (p *awsSNS) FindResources(ctx context.Context) (rErr error) {
 	ctx = trace.StartSpan(ctx, "FindBackendResources")
 	defer func() { trace.EndSpan(ctx, rErr) }()
 

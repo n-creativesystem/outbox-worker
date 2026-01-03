@@ -32,7 +32,7 @@ func TestAWSSNSFindBackendResourcesWithNotPagination(t *testing.T) {
 	client.EXPECT().ListTopics(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 	client.EXPECT().GetTopicAttributes(gomock.Any(), gomock.Any(), gomock.Any()).Return(&outputAttribute, nil)
 	p := newAWSSNS(context.Background(), client, &config.AWS{})
-	err := p.FindBackendResources(context.Background())
+	err := p.FindResources(context.Background())
 	require.NoError(err)
 	v, err := p.mpResourceNameToArn.Load(context.Background(), "test-sns")
 	require.NoError(err)
@@ -96,7 +96,7 @@ func TestAWSSNSFindBackendResourcesWithPagination(t *testing.T) {
 		})
 
 	p := newAWSSNS(context.Background(), client, &config.AWS{})
-	err := p.FindBackendResources(context.Background())
+	err := p.FindResources(context.Background())
 	require.NoError(err)
 	v, err := p.mpResourceNameToArn.Load(context.Background(), "test-sns")
 	require.NoError(err)
