@@ -206,7 +206,7 @@ func (p *OutboxPolling) publishEvent(ctx context.Context, event *outbox.Event) (
 		}
 	}()
 
-	err := p.publisher.PublishOutbox(ctx, interfaces.Outbox{
+	err := p.publisher.Publish(ctx, interfaces.Outbox{
 		AggregateId:   event.AggregateID(),
 		AggregateType: event.AggregateType(),
 		EventType:     event.Event(),

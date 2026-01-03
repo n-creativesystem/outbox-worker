@@ -23,14 +23,14 @@ func New(cfg *config.Publisher, publisher interfaces.BackendPublisher) interface
 	}
 }
 
-func (svc *service) PublishOutbox(ctx context.Context, outbox interfaces.Outbox) (rErr error) {
+func (svc *service) Publish(ctx context.Context, outbox interfaces.Outbox) (rErr error) {
 	ctx = trace.StartSpan(ctx, "PublishOutbox")
 	defer func() { trace.EndSpan(ctx, rErr) }()
 	slog.With(
 		slog.String("AggregateType", outbox.AggregateType),
 		slog.String("AggregateId", outbox.AggregateId),
 	).InfoContext(ctx, "Receive outbox.")
-	msgId, err := svc.publisher.PublishOutbox(ctx, outbox)
+	msgId, err := svc.publisher.Publish(ctx, outbox)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func (svc *service) PublishOutbox(ctx context.Context, outbox interfaces.Outbox)
 }
 
 func (svc *service) FindResources(ctx context.Context) error {
-	return svc.publisher.FindBackendResources(ctx)
+	return svc.publisher.FindResources(ctx)
 }
 
 func (svc *service) RefetchResources(ctx context.Context) chan error {

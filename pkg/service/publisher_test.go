@@ -6,18 +6,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/n-creativesystem/outbox-worker/pkg/config"
 	"github.com/n-creativesystem/outbox-worker/pkg/mock/interfaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func testBackendPublisher(mockCtl *gomock.Controller, returnErr error) *interfaces.MockBackendPublisher {
 	backendPublisher := interfaces.NewMockBackendPublisher(mockCtl)
 	// 2秒待つので最大で2回呼ばれる想定
 	// 何度かテストを回していると1回ズレる時があるので最大の設定をしている
-	backendPublisher.EXPECT().FindBackendResources(gomock.Any()).MaxTimes(2).Return(returnErr)
+	backendPublisher.EXPECT().FindResources(gomock.Any()).MaxTimes(2).Return(returnErr)
 	return backendPublisher
 }
 
@@ -30,7 +30,6 @@ func TestRefetchResourcesWithNoError(t *testing.T) {
 
 	backendPublisher := testBackendPublisher(mockCtl, nil)
 	cfg := &config.Publisher{
-		AWS: config.AWS{},
 		RefetchTimer: config.RefetchTimer{
 			Enabled:  true,
 			Interval: 1 * time.Second,
@@ -56,7 +55,6 @@ func TestRefetchResourcesWithError(t *testing.T) {
 
 	backendPublisher := testBackendPublisher(mockCtl, errors.New("Test"))
 	cfg := &config.Publisher{
-		AWS: config.AWS{},
 		RefetchTimer: config.RefetchTimer{
 			Enabled:  true,
 			Interval: 1 * time.Second,
