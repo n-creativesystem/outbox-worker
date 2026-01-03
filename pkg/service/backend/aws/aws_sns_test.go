@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -9,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/golang/mock/gomock"
 	"github.com/n-creativesystem/outbox-worker/pkg/config"
+	"github.com/n-creativesystem/outbox-worker/pkg/interfaces"
 	mockAws "github.com/n-creativesystem/outbox-worker/pkg/mock/aws"
 	"github.com/stretchr/testify/require"
 )
@@ -110,4 +112,42 @@ func TestAWSSNSFindBackendResourcesWithPagination(t *testing.T) {
 	require.NoError(err)
 	require.Equal(v.Arn, "arn:aws:sns:ap-northeast-1:000000000000:test-sns2")
 	require.Equal(v.IsMessageDeduplicationSetting, false)
+}
+
+func TestAWSSNSPublish_WithSNSTopicARN_AggregateType(t *testing.T) {
+	require := require.New(t)
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	client := mockAws.NewMockSNSClient(mockCtl)
+
+	// Cache is keyed by topic name (ARN resource), Publish should accept full ARN and resolve to that key.
+	awsSNS := newAWSSNS(context.Background(), client, &config.AWS{})
+
+	topicArn := "arn:aws:sns:ap-northeast-1:123456789012:my-topic"
+	awsSNS.mpResourceNameToArn.Add(context.Background(), "my-topic", &snsInfo{Arn: topicArn})
+
+	client.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, input *sns.PublishInput, _ ...func(*sns.Options)) (*sns.PublishOutput, error) {
+			require.NotNil(input.TargetArn)
+			require.Equal(topicArn, *input.TargetArn)
+			require.NotNil(input.Message)
+			require.Equal(`{"a":1}`, *input.Message)
+			require.NotNil(input.MessageGroupId)
+			require.Equal("A1", *input.MessageGroupId)
+			return &sns.PublishOutput{MessageId: aws.String("msg-1")}, nil
+		},
+	)
+
+	out := interfaces.Outbox{
+		AggregateId:   "A1",
+		AggregateType: topicArn,
+		EventType:     "created",
+		Payload:       `{"a":1}`,
+		ProducerName:  "producer",
+	}
+
+	msgID, err := awsSNS.Publish(context.Background(), out)
+	require.NoError(err)
+	require.Equal("msg-1", fmt.Sprintf("%s", msgID))
 }
