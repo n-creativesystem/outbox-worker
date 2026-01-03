@@ -16,6 +16,7 @@ import (
 	"github.com/n-creativesystem/outbox-worker/pkg/config"
 	"github.com/n-creativesystem/outbox-worker/pkg/interfaces"
 	"github.com/n-creativesystem/outbox-worker/pkg/interfaces/aws"
+	"github.com/n-creativesystem/outbox-worker/pkg/internal/rn"
 	"github.com/n-creativesystem/outbox-worker/pkg/internal/logging"
 	"github.com/n-creativesystem/outbox-worker/pkg/service/backend/store"
 	"go.opentelemetry.io/otel/attribute"
@@ -57,7 +58,13 @@ func (p *awsSNS) Publish(ctx context.Context, outbox interfaces.Outbox) (_ strin
 		attribute.String("ProducerName", outbox.ProducerName),
 	)
 	defer func() { trace.EndSpan(ctx, rErr) }()
-	resource, err := p.mpResourceNameToArn.Load(ctx, outbox.AggregateType)
+	key := outbox.AggregateType
+	if rn.IsRN(key) {
+		if parsed, err := rn.Parse(key); err == nil && parsed.Resource != "" {
+			key = parsed.Resource
+		}
+	}
+	resource, err := p.mpResourceNameToArn.Load(ctx, key)
 	if err != nil {
 		return "", err
 	}
