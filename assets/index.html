@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Outbox Messenger - Reliable Message Relaying</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      background-color: #f8fafc;
+      /* Slate 50 */
+      color: #0f172a;
+      /* Slate 900 */
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+
+    code,
+    pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      height: 300px;
+      max-height: 400px;
+    }
+
+    /* Custom Scrollbar for code blocks */
+    .custom-scroll::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+
+    .architecture-node {
+      transition: all 0.3s ease;
+    }
+
+    .architecture-node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .code-highlight {
+      background-color: #334155;
+      /* Slate 700 */
+      display: block;
+      width: 100%;
+    }
+
+    .feature-card {
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      border-color: #6366f1;
+      /* Indigo 500 */
+    }
+
+    .tab-active {
+      border-bottom: 2px solid #6366f1;
+      /* Indigo 500 */
+      color: #6366f1;
+    }
+
+    .tab-inactive {
+      border-bottom: 2px solid transparent;
+      color: #64748b;
+    }
+
+    .tab-inactive:hover {
+      color: #334155;
+    }
+
+    /* Language Toggle Helpers */
+    .lang-en.hidden,
+    .lang-ja.hidden {
+      display: none !important;
+    }
+
+    /* AI Generator Styles */
+    .ai-gradient-text {
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .ai-border {
+      position: relative;
+      background: #1e293b;
+      border-radius: 0.5rem;
+      z-index: 1;
+    }
+
+    .ai-border::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: 0.6rem;
+      background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+      z-index: -1;
+      opacity: 0.7;
+    }
+
+    .shimmer {
+      animation: shimmer 2s infinite linear;
+      background: linear-gradient(to right, #334155 4%, #475569 25%, #334155 36%);
+      background-size: 1000px 100%;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+  </style>
+</head>
+
+<body class="antialiased">
+
+  <!-- Header / Hero Section -->
+  <header class="bg-white border-b border-slate-200 relative">
+    <!-- Language Switcher -->
+    <div class="absolute top-4 right-4 z-10">
+      <button onclick="toggleLanguage()"
+        class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors text-sm font-semibold text-slate-700">
+        <i class="fas fa-globe"></i>
+        <span id="lang-btn-text">日本語</span>
+      </button>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+      <div class="inline-flex items-center justify-center p-3 bg-indigo-50 rounded-full mb-6">
+        <i class="fas fa-paper-plane text-indigo-600 text-2xl"></i>
+      </div>
+      <h1 class="text-5xl font-bold text-slate-900 tracking-tight mb-4">Outbox Messenger</h1>
+      <p class="text-xl text-slate-600 max-w-2xl mx-auto mb-8">
+        <span class="lang-ja hidden">
+          Reliable Outbox Pattern Worker for Go.<br>
+          <span class="text-sm font-normal text-slate-500">
+            DBのメッセージテーブルから定期的にイベントを取得し、AWS SNS や NATS JetStream へ確実に配信します。
+          </span>
+        </span>
+        <span class="lang-en">
+          Reliable Outbox Pattern Worker for Go.<br>
+          <span class="text-sm font-normal text-slate-500">
+            Periodically fetches messages from your DB and reliably publishes them to AWS SNS or NATS JetStream.
+          </span>
+        </span>
+      </p>
+
+      <div class="flex justify-center items-center space-x-4 flex-col sm:flex-row gap-4 sm:gap-0">
+        <div class="bg-slate-900 text-slate-200 px-6 py-3 rounded-lg font-mono text-sm flex items-center shadow-lg">
+          <span class="text-green-400 mr-2">$</span> <span id="install-text">outbox-messenger outbox polling -c
+            config.yaml</span>
+          <button onclick="copyInstall()" class="ml-4 text-slate-400 hover:text-white transition-colors"
+            title="Copy to clipboard">
+            <i class="far fa-copy"></i>
+          </button>
+        </div>
+        <a href="#code-walkthrough"
+          class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition-colors">
+          Get Started
+        </a>
+      </div>
+      <div id="copy-feedback" class="h-6 mt-2 text-sm text-green-600 font-medium opacity-0 transition-opacity">Copied!
+      </div>
+    </div>
+  </header>
+
+  <!-- Context: Introduction to the Problem Space -->
+  <section class="py-12 bg-slate-50">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <h2 class="text-3xl font-bold text-slate-900 mb-6">Why Outbox Messenger?</h2>
+      <div class="text-slate-600 mb-8 leading-relaxed">
+        <p class="lang-ja hidden">
+          分散システムにおいて、データベースの更新とメッセージブローカーへの送信をアトミックに行うことは困難です。<br>
+          Outbox Messenger は、**Outboxパターン**の実装をシンプルにし、順序保証と高い信頼性を提供します。
+        </p>
+        <p class="lang-en">
+          In distributed systems, atomically updating the database and sending messages to a broker is challenging.<br>
+          Outbox Messenger simplifies the **Outbox Pattern**, providing guaranteed ordering and high reliability.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">
+            <i class="fas fa-sort-numeric-down text-indigo-500 mr-2"></i>
+            <span class="lang-ja hidden">順序制御</span>
+            <span class="lang-en">Strict Ordering</span>
+          </h3>
+          <p class="text-left text-slate-600 text-sm">
+            <span class="lang-ja hidden">
+              同一 <code>aggregate_id</code> 内のレコードはID順にソートされ、順序通りにPublishされます。失敗時は順序維持のため停止します。
+            </span>
+            <span class="lang-en">
+              Records with the same <code>aggregate_id</code> are sorted and published in order. Stops on failure to
+              preserve order.
+            </span>
+          </p>
+        </div>
+        <!-- Feature 2 -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">
+            <i class="fas fa-redo text-indigo-500 mr-2"></i>
+            <span class="lang-ja hidden">リトライ & Backoff</span>
+            <span class="lang-en">Retry & Backoff</span>
+          </h3>
+          <p class="text-left text-slate-600 text-sm">
+            <span class="lang-ja hidden">
+              指数バックオフアルゴリズムを実装。一時的な障害時にシステムへの負荷を抑えつつ、自動的に再試行します。
+            </span>
+            <span class="lang-en">
+              Implements exponential backoff logic. Automatically retries during temporary failures while reducing load.
+            </span>
+          </p>
+        </div>
+        <!-- Feature 3 -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">
+            <i class="fas fa-network-wired text-indigo-500 mr-2"></i>
+            <span class="lang-ja hidden">Multi-Backend</span>
+            <span class="lang-en">Multi-Backend</span>
+          </h3>
+          <p class="text-left text-slate-600 text-sm">
+            <span class="lang-ja hidden">
+              AWS SNS と NATS JetStream に対応。<code>aggregate_type</code> (ARN/RN) に基づいて送信先を自動選択します。
+            </span>
+            <span class="lang-en">
+              Supports AWS SNS and NATS JetStream. Automatically selects the publisher based on
+              <code>aggregate_type</code> (ARN/RN).
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Visualization: Architecture Explorer -->
+  <section class="py-16 bg-white border-y border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold text-slate-900">Architecture Explorer</h2>
+        <p class="text-slate-500 mt-2 lang-ja hidden">各コンポーネントをクリックして、メッセージの流れを確認してください。</p>
+        <p class="text-slate-500 mt-2 lang-en">Click on the components below to explore the message flow.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <!-- Diagram Area (Fixed Layout) -->
+        <div
+          class="lg:col-span-2 bg-slate-50 rounded-2xl p-8 border border-slate-200 min-h-[400px] flex items-center justify-center overflow-hidden">
+
+          <!-- Flex Container for Nodes -->
+          <div class="flex flex-col md:flex-row items-center justify-center gap-4 w-full">
+
+            <!-- App Node -->
+            <div class="flex flex-col items-center group">
+              <div onclick="showArchInfo('app')"
+                class="architecture-node cursor-pointer bg-white border-2 border-slate-300 p-4 rounded-lg shadow-sm w-32 text-center z-10 hover:border-indigo-400 group-hover:scale-105 transition-transform">
+                <div class="text-slate-500 text-xl mb-1"><i class="fas fa-laptop-code"></i></div>
+                <div class="font-bold text-sm text-slate-700">App</div>
+              </div>
+            </div>
+
+            <!-- Arrow 1 -->
+            <div class="text-slate-300 flex items-center justify-center">
+              <i class="fas fa-arrow-down md:hidden text-2xl"></i>
+              <i class="fas fa-arrow-right hidden md:block text-2xl"></i>
+            </div>
+
+            <!-- DB Node -->
+            <div class="flex flex-col items-center group">
+              <div onclick="showArchInfo('db')"
+                class="architecture-node cursor-pointer bg-white border-2 border-slate-300 p-4 rounded-lg shadow-sm w-32 text-center z-10 hover:border-indigo-400 group-hover:scale-105 transition-transform">
+                <div class="text-slate-500 text-xl mb-1"><i class="fas fa-database"></i></div>
+                <div class="font-bold text-sm text-slate-700">Outbox Table</div>
+              </div>
+            </div>
+
+            <!-- Arrow 2 -->
+            <div class="text-slate-300 flex items-center justify-center">
+              <i class="fas fa-arrow-down md:hidden text-2xl"></i>
+              <i class="fas fa-arrow-right hidden md:block text-2xl"></i>
+            </div>
+
+            <!-- Worker Node -->
+            <div class="flex flex-col items-center group">
+              <div onclick="showArchInfo('worker')"
+                class="architecture-node cursor-pointer bg-slate-900 text-white p-4 rounded-lg shadow-lg w-40 text-center z-20 hover:ring-4 hover:ring-indigo-200 group-hover:scale-105 transition-transform">
+                <div class="text-indigo-400 text-2xl mb-1"><i class="fas fa-cogs"></i></div>
+                <div class="font-bold">Outbox Worker</div>
+                <div class="text-xs text-slate-400 mt-1">Polling & Publishing</div>
+              </div>
+            </div>
+
+            <!-- Arrow 3 -->
+            <div class="text-slate-300 flex items-center justify-center">
+              <i class="fas fa-arrow-down md:hidden text-2xl"></i>
+              <i class="fas fa-arrow-right hidden md:block text-2xl"></i>
+            </div>
+
+            <!-- Backend Node -->
+            <div class="flex flex-col items-center group">
+              <div onclick="showArchInfo('backend')"
+                class="architecture-node cursor-pointer bg-white border-2 border-indigo-500 p-4 rounded-lg shadow-sm w-32 text-center z-10 hover:bg-indigo-50 group-hover:scale-105 transition-transform">
+                <div class="text-indigo-500 text-xl mb-1"><i class="fas fa-cloud"></i></div>
+                <div class="font-bold text-xs text-slate-700">SNS / NATS</div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Info Panel -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg h-full">
+          <div id="arch-info-default">
+            <h3 class="text-xl font-bold text-slate-900 mb-4">Architecture Flow</h3>
+            <p class="text-slate-600 lang-ja hidden">
+              Outbox Messengerは、アプリケーションとメッセージブローカーの間を仲介します。ポーリングモデルを採用することで、複雑な分散トランザクションを回避します。
+            </p>
+            <p class="text-slate-600 lang-en">
+              Outbox Messenger mediates between your app and message brokers. It uses a polling model to avoid complex
+              distributed transactions.
+            </p>
+
+            <p class="text-slate-600 mt-4 lang-ja hidden"><i class="fas fa-mouse-pointer text-slate-400 mr-2"></i>
+              左の図のコンポーネントをクリックして詳細を確認してください。</p>
+            <p class="text-slate-600 mt-4 lang-en"><i class="fas fa-mouse-pointer text-slate-400 mr-2"></i> Click a
+              component on the diagram to learn more.</p>
+          </div>
+
+          <div id="arch-info-app" class="hidden animate-fade-in">
+            <div class="flex items-center mb-4">
+              <div class="p-2 bg-slate-100 rounded-lg mr-3"><i class="fas fa-laptop-code text-slate-600"></i></div>
+              <h3 class="text-xl font-bold text-slate-900">Application</h3>
+            </div>
+            <div class="lang-ja hidden">
+              <p class="text-slate-600 text-sm mb-4">ユーザーのアプリケーションです。</p>
+              <ul class="space-y-3 text-sm text-slate-600">
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> ビジネスロジックの実行</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <strong>同一トランザクション内</strong>で、データの更新とOutboxテーブルへのINSERTを行う</li>
+              </ul>
+            </div>
+            <div class="lang-en">
+              <p class="text-slate-600 text-sm mb-4">Your application code.</p>
+              <ul class="space-y-3 text-sm text-slate-600">
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> Executes business
+                  logic.</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> Inserts into the
+                  Outbox table within the <strong>same transaction</strong> as data updates.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="arch-info-db" class="hidden animate-fade-in">
+            <div class="flex items-center mb-4">
+              <div class="p-2 bg-slate-100 rounded-lg mr-3"><i class="fas fa-database text-slate-600"></i></div>
+              <h3 class="text-xl font-bold text-slate-900">Outbox Table</h3>
+            </div>
+            <div class="lang-ja hidden">
+              <p class="text-slate-600 text-sm mb-4">メッセージの一時保管場所です。</p>
+              <ul class="space-y-3 text-sm text-slate-600">
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <code>aggregate_type</code>: 送信先 (ARN/RN)</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <code>aggregate_id</code>: 順序制御のためのグループID</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <code>payload</code>: JSONデータ</li>
+              </ul>
+            </div>
+            <div class="lang-en">
+              <p class="text-slate-600 text-sm mb-4">Temporary storage for messages.</p>
+              <ul class="space-y-3 text-sm text-slate-600">
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <code>aggregate_type</code>: Destination (ARN/RN)</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <code>aggregate_id</code>: Group ID for ordering</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <code>payload</code>: JSON data</li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="arch-info-worker" class="hidden animate-fade-in">
+            <div class="flex items-center mb-4">
+              <div class="p-2 bg-slate-900 rounded-lg mr-3"><i class="fas fa-cogs text-indigo-400"></i></div>
+              <h3 class="text-xl font-bold text-slate-900">Outbox Worker</h3>
+            </div>
+            <div class="lang-ja hidden">
+              <p class="text-slate-600 text-sm mb-4">本ライブラリのコアコンポーネントです。</p>
+              <ul class="space-y-3 text-sm text-slate-600">
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <strong>Polling:</strong> 定期的に未送信メッセージを取得</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <strong>Grouping:</strong> <code>aggregate_type</code> で並列化、<code>id</code> で順序制御</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> <strong>State
+                    Mgmt:</strong> 送信成功時に <code>sent_at</code> を更新</li>
+              </ul>
+            </div>
+            <div class="lang-en">
+              <p class="text-slate-600 text-sm mb-4">The core component of this library.</p>
+              <ul class="space-y-3 text-sm text-slate-600">
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <strong>Polling:</strong> Periodically fetches unsent messages.</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i>
+                  <strong>Grouping:</strong> Parallel by <code>aggregate_type</code>, ordered by <code>id</code>.</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> <strong>State
+                    Mgmt:</strong> Updates <code>sent_at</code> on success.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="arch-info-backend" class="hidden animate-fade-in">
+            <div class="flex items-center mb-4">
+              <div class="p-2 bg-indigo-50 rounded-lg mr-3"><i class="fas fa-cloud text-indigo-600"></i></div>
+              <h3 class="text-xl font-bold text-slate-900">Backend</h3>
+            </div>
+            <div class="lang-ja hidden">
+              <p class="text-slate-600 text-sm mb-4">メッセージの最終的な配送先です。</p>
+              <ul class="space-y-3 text-sm text-slate-600">
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> <strong>AWS
+                    SNS:</strong> ARN指定。Event属性を付与。</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> <strong>NATS
+                    JetStream:</strong> RN指定。Subject形式 <code>topic.aggregate_id</code>。</li>
+              </ul>
+            </div>
+            <div class="lang-en">
+              <p class="text-slate-600 text-sm mb-4">The final destination of the messages.</p>
+              <ul class="space-y-3 text-sm text-slate-600">
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> <strong>AWS
+                    SNS:</strong> Targeted via ARN. Includes Event attributes.</li>
+                <li class="flex items-start"><i class="fas fa-check text-indigo-500 mt-1 mr-2"></i> <strong>NATS
+                    JetStream:</strong> Targeted via RN. Subject: <code>topic.aggregate_id</code>.</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Code Walkthrough -->
+  <section id="code-walkthrough" class="py-16 bg-slate-900 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <!-- Code Display -->
+        <div>
+          <h2 class="text-3xl font-bold mb-6 text-white"><i class="fas fa-terminal mr-3 text-indigo-400"></i>Setup Guide
+          </h2>
+          <div class="bg-slate-800 rounded-lg p-1 border border-slate-700 shadow-2xl">
+            <div class="flex items-center px-4 py-2 border-b border-slate-700 bg-slate-800/50 rounded-t-lg">
+              <div class="flex space-x-2 mr-4">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+              </div>
+              <span id="filename-display" class="text-xs text-slate-400 font-mono">schema.sql</span>
+            </div>
+            <div class="p-4 overflow-x-auto custom-scroll font-mono text-sm leading-relaxed" id="code-block">
+              <!-- Code injected by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Steps -->
+        <div class="flex flex-col justify-center">
+          <h3 class="text-xl font-semibold text-indigo-400 mb-6 uppercase tracking-wider text-sm">Integration Steps
+          </h3>
+          <div class="space-y-6">
+            <button onclick="setStep(1)" id="btn-step-1"
+              class="w-full text-left p-4 rounded-lg bg-slate-800 border border-indigo-500/50 hover:bg-slate-700 transition-all group">
+              <div class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-600 rounded-full font-bold text-white mr-4 group-hover:scale-110 transition-transform">1</span>
+                <div>
+                  <h4 class="font-bold text-white mb-1">
+                    <span class="lang-ja hidden">1) テーブル作成</span>
+                    <span class="lang-en">1) Create Table</span>
+                  </h4>
+                  <p class="text-slate-400 text-sm lang-ja hidden">アプリケーションDBに <code>outbox</code>
+                    テーブルを作成します。必須カラムが含まれていることを確認してください。</p>
+                  <p class="text-slate-400 text-sm lang-en">Create the <code>outbox</code> table in your app DB. Ensure
+                    all required columns are present.</p>
+                </div>
+              </div>
+            </button>
+
+            <button onclick="setStep(2)" id="btn-step-2"
+              class="w-full text-left p-4 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-all group">
+              <div class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-slate-600 rounded-full font-bold text-white mr-4 group-hover:scale-110 transition-transform">2</span>
+                <div>
+                  <h4 class="font-bold text-white mb-1">
+                    <span class="lang-ja hidden">2) 設定ファイル (YAML)</span>
+                    <span class="lang-en">2) Configuration (YAML)</span>
+                  </h4>
+                  <p class="text-slate-400 text-sm lang-ja hidden">DB接続情報、ポーリング間隔、Publisher (SNS/NATS) の設定を記述します。</p>
+                  <p class="text-slate-400 text-sm lang-en">Configure DB connection, polling interval, and Publishers
+                    (SNS/NATS).</p>
+                </div>
+              </div>
+            </button>
+
+            <button onclick="setStep(3)" id="btn-step-3"
+              class="w-full text-left p-4 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-all group">
+              <div class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-slate-600 rounded-full font-bold text-white mr-4 group-hover:scale-110 transition-transform">3</span>
+                <div>
+                  <h4 class="font-bold text-white mb-1">
+                    <span class="lang-ja hidden">3) 実行 (Polling)</span>
+                    <span class="lang-en">3) Run Polling</span>
+                  </h4>
+                  <p class="text-slate-400 text-sm lang-ja hidden">CLIコマンドを実行してWorkerを起動します。ヘルスチェックサーバーも同時に立ち上がります。</p>
+                  <p class="text-slate-400 text-sm lang-en">Run the CLI command to start the worker. This also starts
+                    the health check server.</p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Observability Dashboard -->
+  <section class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <div
+            class="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wide mb-4">
+            <i class="fas fa-eye mr-2"></i> Observability
+          </div>
+          <h2 class="text-3xl font-bold text-slate-900 mb-4">Production Ready</h2>
+          <p class="text-slate-600 mb-6 lang-ja hidden">
+            Outbox Messenger は、本番環境での運用を見据えたログとトレーシング機能を備えています。
+          </p>
+          <p class="text-slate-600 mb-6 lang-en">
+            Outbox Messenger comes with built-in logging and tracing capabilities ready for production.
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <h4 class="font-bold text-slate-800 mb-2"><i class="fas fa-file-alt text-slate-400 mr-2"></i>Logging</h4>
+              <p class="text-xs text-slate-500 mb-2">Supported Handlers:</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded">Text / JSON</span>
+                <span class="px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded">Rollbar</span>
+                <span class="px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded">Sentry</span>
+                <span class="px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded">Datadog</span>
+              </div>
+            </div>
+            <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <h4 class="font-bold text-slate-800 mb-2"><i
+                  class="fas fa-project-diagram text-slate-400 mr-2"></i>Tracing</h4>
+              <p class="text-xs text-slate-500 mb-2">OpenTelemetry Support:</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">Otel Collector</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-2">Configurable Service Name & Environment.</p>
+            </div>
+          </div>
+
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-100">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="font-bold text-slate-800">Publishing Throughput (Simulated)</h3>
+            <span class="flex h-3 w-3 relative">
+              <span
+                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+            </span>
+          </div>
+          <div class="chart-container">
+            <canvas id="metricsChart"></canvas>
+          </div>
+          <div class="mt-4 flex justify-between text-xs text-slate-400 font-mono">
+            <span>Last 60s</span>
+            <span>Now</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Operational Notes (Tabbed) -->
+  <section class="py-16 bg-slate-50 border-t border-slate-200">
+    <div class="max-w-4xl mx-auto px-4">
+      <h2 class="text-3xl font-bold text-slate-900 text-center mb-10">Operational Notes</h2>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
+          <button onclick="showTab('schema')" id="tab-btn-schema"
+            class="flex-1 py-4 px-4 text-center font-semibold text-sm tab-active transition-colors whitespace-nowrap">
+            <span class="lang-ja hidden">テーブル仕様</span>
+            <span class="lang-en">Table Specs</span>
+          </button>
+          <button onclick="showTab('types')" id="tab-btn-types"
+            class="flex-1 py-4 px-4 text-center font-semibold text-sm tab-inactive transition-colors whitespace-nowrap">
+            <span class="lang-ja hidden">Aggregate Types</span>
+            <span class="lang-en">Aggregate Types</span>
+          </button>
+          <button onclick="showTab('retry')" id="tab-btn-retry"
+            class="flex-1 py-4 px-4 text-center font-semibold text-sm tab-inactive transition-colors whitespace-nowrap">
+            <span class="lang-ja hidden">リトライ仕様</span>
+            <span class="lang-en">Retry Logic</span>
+          </button>
+        </div>
+
+        <div class="p-8">
+          <div id="tab-content-schema">
+            <h3 class="text-lg font-bold text-slate-900 mb-3"><i class="fas fa-table text-indigo-500 mr-2"></i>
+              <span class="lang-ja hidden">必須カラム</span>
+              <span class="lang-en">Required Columns</span>
+            </h3>
+            <p class="text-slate-600 text-sm mb-4 lang-ja hidden">アプリケーション側で以下のカラムを持つテーブルを作成してください。</p>
+            <p class="text-slate-600 text-sm mb-4 lang-en">Your application must create a table with the following
+              columns.</p>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left text-slate-600">
+                <thead class="text-xs text-slate-700 uppercase bg-slate-50">
+                  <tr>
+                    <th class="px-4 py-2">Column</th>
+                    <th class="px-4 py-2">Type</th>
+                    <th class="px-4 py-2">Updater</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-b">
+                    <td class="px-4 py-2 font-mono text-indigo-600">aggregate_type</td>
+                    <td class="px-4 py-2">VARCHAR (ARN/RN)</td>
+                    <td class="px-4 py-2">App</td>
+                  </tr>
+                  <tr class="border-b">
+                    <td class="px-4 py-2 font-mono text-indigo-600">aggregate_id</td>
+                    <td class="px-4 py-2">VARCHAR (Group ID)</td>
+                    <td class="px-4 py-2">App</td>
+                  </tr>
+                  <tr class="border-b">
+                    <td class="px-4 py-2 font-mono text-indigo-600">payload</td>
+                    <td class="px-4 py-2">JSON</td>
+                    <td class="px-4 py-2">App</td>
+                  </tr>
+                  <tr class="bg-slate-50/50">
+                    <td class="px-4 py-2 font-mono text-slate-500">retry_at / sent_at</td>
+                    <td class="px-4 py-2">DATETIME</td>
+                    <td class="px-4 py-2">Worker</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="tab-content-types" class="hidden">
+            <h3 class="text-lg font-bold text-slate-900 mb-3"><i class="fas fa-tag text-indigo-500 mr-2"></i>
+              <span class="lang-ja hidden">ARN / RN 形式</span>
+              <span class="lang-en">ARN / RN Format</span>
+            </h3>
+
+            <div class="lang-ja hidden">
+              <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                Workerは <code>aggregate_type</code> を解析してバックエンドを選択します。
+              </p>
+              <ul class="list-disc pl-5 space-y-2 text-sm text-slate-600">
+                <li><strong class="text-slate-800">AWS SNS:</strong> <code>arn:aws:sns:region:account:topic</code></li>
+                <li><strong class="text-slate-800">NATS:</strong> <code>rn::nats:::topic</code></li>
+              </ul>
+              <div class="mt-4 p-3 bg-red-50 text-red-800 text-xs rounded border border-red-100">
+                <strong>Important:</strong> 形式が正しくない場合、WorkerはPublisherを選択できず送信に失敗します。
+              </div>
+            </div>
+
+            <div class="lang-en">
+              <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                The worker selects the backend publisher by parsing <code>aggregate_type</code>.
+              </p>
+              <ul class="list-disc pl-5 space-y-2 text-sm text-slate-600">
+                <li><strong class="text-slate-800">AWS SNS:</strong> <code>arn:aws:sns:region:account:topic</code></li>
+                <li><strong class="text-slate-800">NATS:</strong> <code>rn::nats:::topic</code></li>
+              </ul>
+              <div class="mt-4 p-3 bg-red-50 text-red-800 text-xs rounded border border-red-100">
+                <strong>Important:</strong> If the format is invalid, the worker cannot select a publisher and will
+                fail.
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-content-retry" class="hidden">
+            <h3 class="text-lg font-bold text-slate-900 mb-3"><i class="fas fa-history text-indigo-500 mr-2"></i>
+              <span class="lang-ja hidden">リトライ戦略</span>
+              <span class="lang-en">Retry Strategy</span>
+            </h3>
+
+            <div class="lang-ja hidden">
+              <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                Publish失敗時、Workerは指数バックオフに基づいて <code>retry_at</code> と <code>retry_count</code> を更新します。
+              </p>
+              <div class="bg-slate-100 p-3 rounded text-xs font-mono text-slate-700 mb-4">
+                nextRetryTime = now + retryBackoff * (2 ^ retry_count)
+              </div>
+              <p class="text-slate-600 text-sm">
+                <code>retry_at</code> が未来の時間になっているレコードは、その時間になるまでFetchされません（Skipされます）。
+              </p>
+            </div>
+
+            <div class="lang-en">
+              <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                On failure, the worker updates <code>retry_at</code> and <code>retry_count</code> using exponential
+                backoff.
+              </p>
+              <div class="bg-slate-100 p-3 rounded text-xs font-mono text-slate-700 mb-4">
+                nextRetryTime = now + retryBackoff * (2 ^ retry_count)
+              </div>
+              <p class="text-slate-600 text-sm">
+                Records with a future <code>retry_at</code> are skipped during fetching until that time is reached.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="bg-slate-900 text-slate-400 py-8 text-center border-t border-slate-800">
+    <p class="text-sm">&copy; 2026 Outbox Messenger. Released under MIT License.</p>
+    <div class="mt-4 space-x-4 text-xl">
+      <a href="#" class="hover:text-white transition-colors"><i class="fab fa-github"></i></a>
+    </div>
+  </footer>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // --- Language Switcher Logic ---
+    let currentLang = 'en';
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'ja' ? 'en' : 'ja';
+
+      // Toggle visibility using utility classes
+      const enElements = document.querySelectorAll('.lang-en');
+      const jaElements = document.querySelectorAll('.lang-ja');
+
+      jaElements.forEach(el => {
+        if (currentLang === 'ja') el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+
+      enElements.forEach(el => {
+        if (currentLang === 'en') el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+
+      // Update button text
+      document.getElementById('lang-btn-text').innerText = currentLang === 'ja' ? 'English' : '日本語';
+
+      // Re-render code to switch comments
+      renderCode(currentStep);
+    }
+
+    // --- Code Snippets ---
+    const codeSnippets = {
+      ja: {
+        1: `CREATE TABLE outbox (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  aggregate_type VARCHAR(255) NOT NULL, -- "arn:aws:..." or "rn::nats:..."
+  aggregate_id VARCHAR(255) NOT NULL,   -- Grouping ID
+  event VARCHAR(255) NOT NULL,          -- Event Name
+  payload JSON NOT NULL,                -- Message Body
+  retry_at DATETIME NULL,
+  retry_count INT NULL,
+  sent_at DATETIME NULL
+);`,
+        2: `outbox:
+  tableName: "outbox"
+  pollingInterval: "5s"
+  throughput: 3000
+
+database:
+  uri: "mysql://user:pass@tcp(db:3306)/app"
+
+publisher:
+  aws:
+    region: "ap-northeast-1"
+    sns:
+      resources:
+        whitelist: ["my-topic"]
+  # or
+  # nats:
+  #   server: "nats://localhost:4222"`,
+        3: `# 設定ファイルを指定してポーリングを開始
+$ outbox-messenger outbox polling \\
+    -c config.yaml \\
+    --health-check-addr :8080
+
+# Output:
+# INFO: Starting outbox worker...
+# INFO: Health check server listening on :8080`
+      },
+      en: {
+        1: `CREATE TABLE outbox (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  aggregate_type VARCHAR(255) NOT NULL, -- "arn:aws:..." or "rn::nats:..."
+  aggregate_id VARCHAR(255) NOT NULL,   -- Grouping ID
+  event VARCHAR(255) NOT NULL,          -- Event Name
+  payload JSON NOT NULL,                -- Message Body
+  retry_at DATETIME NULL,
+  retry_count INT NULL,
+  sent_at DATETIME NULL
+);`,
+        2: `outbox:
+  tableName: "outbox"
+  pollingInterval: "5s"
+  throughput: 3000
+
+database:
+  uri: "mysql://user:pass@tcp(db:3306)/app"
+
+publisher:
+  aws:
+    region: "ap-northeast-1"
+    sns:
+      resources:
+        whitelist: ["my-topic"]
+  # or
+  # nats:
+  #   server: "nats://localhost:4222"`,
+        3: `# Start polling with config file
+$ outbox-messenger outbox polling \\
+    -c config.yaml \\
+    --health-check-addr :8080
+
+# Output:
+# INFO: Starting outbox worker...
+# INFO: Health check server listening on :8080`
+      }
+    };
+
+    const filenames = {
+      1: "schema.sql",
+      2: "config.yaml",
+      3: "terminal"
+    };
+
+    let currentStep = 1;
+
+    function renderCode(activeStep) {
+      currentStep = activeStep;
+      // Select snippet based on current language
+      const currentSnippet = codeSnippets[currentLang][activeStep];
+      const lines = currentSnippet.split('\n');
+      const container = document.getElementById('code-block');
+      container.innerHTML = ''; // Clear
+
+      document.getElementById('filename-display').innerText = filenames[activeStep];
+
+      lines.forEach((line, index) => {
+        const lineNum = index + 1;
+        const div = document.createElement('div');
+        div.className = "flex";
+
+        const numSpan = document.createElement('span');
+        numSpan.className = "text-slate-600 select-none w-8 flex-shrink-0 text-right mr-4";
+        numSpan.innerText = lineNum;
+
+        const codeSpan = document.createElement('pre');
+        codeSpan.className = "flex-1 whitespace-pre";
+        codeSpan.innerText = line;
+
+        // Simple syntax coloring
+        if (line.trim().startsWith('--') || line.trim().startsWith('#')) codeSpan.className += " text-slate-500 italic";
+        else if (line.includes('CREATE TABLE') || line.includes('VARCHAR') || line.includes('JSON')) codeSpan.className += " text-indigo-400 font-bold";
+        else if (line.includes(':')) codeSpan.className += " text-blue-300"; // YAML keys
+        else if (line.includes('$')) codeSpan.className += " text-green-400 font-bold"; // Terminal prompt
+        else codeSpan.className += " text-slate-200";
+
+        div.appendChild(numSpan);
+        div.appendChild(codeSpan);
+        container.appendChild(div);
+      });
+    }
+
+    function setStep(step) {
+      renderCode(step);
+      // Update button styles
+      for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById(`btn-step-${i}`);
+        if (i === step) {
+          btn.classList.remove('border-slate-700');
+          btn.classList.add('border-indigo-500', 'bg-slate-800');
+          btn.querySelector('span').classList.replace('bg-slate-600', 'bg-indigo-600');
+        } else {
+          btn.classList.add('border-slate-700');
+          btn.classList.remove('border-indigo-500');
+          btn.querySelector('span').classList.replace('bg-indigo-600', 'bg-slate-600');
+        }
+      }
+    }
+
+    // Initial Render
+    renderCode(1);
+    setStep(1);
+
+
+    // --- Architecture Info Logic ---
+    function showArchInfo(type) {
+      document.getElementById('arch-info-default').classList.add('hidden');
+      ['app', 'db', 'worker', 'backend'].forEach(id => {
+        document.getElementById(`arch-info-${id}`).classList.add('hidden');
+      });
+      document.getElementById(`arch-info-${type}`).classList.remove('hidden');
+    }
+
+
+    // --- Operational Tabs Logic ---
+    function showTab(tabName) {
+      // Hide all content
+      ['schema', 'types', 'retry'].forEach(t => {
+        document.getElementById(`tab-content-${t}`).classList.add('hidden');
+      });
+
+      // Show selected content
+      document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
+
+      // Update buttons
+      ['schema', 'types', 'retry'].forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tabName) {
+          btn.classList.add('tab-active');
+          btn.classList.remove('tab-inactive');
+        } else {
+          btn.classList.remove('tab-active');
+          btn.classList.add('tab-inactive');
+        }
+      });
+    }
+
+
+    // --- Copy to Clipboard ---
+    function copyInstall() {
+      const cmd = document.getElementById('install-text').innerText;
+      navigator.clipboard.writeText(cmd).then(() => {
+        const feedback = document.getElementById('copy-feedback');
+        feedback.classList.remove('opacity-0');
+        setTimeout(() => feedback.classList.add('opacity-0'), 2000);
+      });
+    }
+
+
+    // --- Chart.js Simulation (Throughput) ---
+    const ctx = document.getElementById('metricsChart').getContext('2d');
+    const dataPoints = 60;
+    const labels = Array.from({ length: dataPoints }, (_, i) => i);
+
+    // Mock data: Message throughput
+    const tputData = new Array(dataPoints).fill(50);
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Msgs/sec',
+          data: tputData,
+          borderColor: '#6366f1', // Indigo 500
+          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        },
+        scales: {
+          x: { display: false },
+          y: {
+            min: 0,
+            max: 100,
+            grid: { color: '#f1f5f9' }
+          }
+        },
+        animation: { duration: 0 }
+      }
+    });
+
+    // Simulate live data
+    setInterval(() => {
+      const currentData = chart.data.datasets[0].data;
+      currentData.shift();
+
+      // Fluctuation
+      const lastVal = currentData[currentData.length - 1] || 50;
+      let change = Math.floor(Math.random() * 20) - 10;
+      let newVal = lastVal + change;
+
+      // Keep within bounds
+      if (newVal < 10) newVal = 10;
+      if (newVal > 90) newVal = 90;
+
+      // Occasional spike
+      if (Math.random() > 0.95) newVal += 30;
+
+      currentData.push(newVal);
+      chart.update();
+    }, 1000);
+
+  </script>
+</body>
+
+</html>
