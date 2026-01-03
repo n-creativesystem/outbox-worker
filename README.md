@@ -148,7 +148,7 @@ The following configurations can be defined in a YAML config file. Refer to [exa
 |-|-|-|-|-|-|
 |`schema`|No|String|||Database schema|
 |`tableName`|Yes|String|`outbox`|`outbox_messages`|Outbox message table name|
-|`producerName`|Yes|String||`NeoAP`|Producer name. This value will be set to a message attribute/header `Producer`.|
+|`producerName`|Yes|String||`example`|Producer name. This value will be set to a message attribute/header `Producer`.|
 |`pollingInterval`|No|Time duration|`5s`|`5s`|The time interval between consecutive polling attempts|
 |`retryCount`|No|Number|`10`|`10`|The maximum number of retry attempts that the outbox worker will make for a message when it fails to send the message to the backend.|
 |`retryBackoff`|No|Time duration|`20s`|`20s`|The fundamental time duration used in calculating the next retry time by the formula `nextRetryTime = currentTime + retryBackoff * (2 ** currentRetryCount)`.|

@@ -148,7 +148,7 @@ YAML の設定ファイルで以下を定義できます。サンプルは [exam
 |-|-|-|-|-|-|
 |`schema`|No|String|||DB schema|
 |`tableName`|Yes|String|`outbox`|`outbox_messages`|Outbox テーブル名|
-|`producerName`|Yes|String||`NeoAP`|Producer 名。メッセージ属性/ヘッダー `Producer` に設定されます。|
+|`producerName`|Yes|String||`example`|Producer 名。メッセージ属性/ヘッダー `Producer` に設定されます。|
 |`pollingInterval`|No|Time duration|`5s`|`5s`|ポーリング間隔|
 |`retryCount`|No|Number|`10`|`10`|publish 失敗時の最大リトライ回数|
 |`retryBackoff`|No|Time duration|`20s`|`20s`|指数バックオフの基準時間（`nextRetryTime = now + retryBackoff * (2 ** retry_count)`）|
