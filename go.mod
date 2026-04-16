@@ -1,6 +1,6 @@
 module github.com/n-creativesystem/outbox-worker
 
-go 1.25
+go 1.25.0
 
 require (
 	entgo.io/ent v0.12.5
@@ -19,7 +19,7 @@ require (
 	github.com/goccy/go-yaml v1.11.2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.9.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/n-creativesystem/go-packages/lib/trace v1.0.0
 	github.com/nats-io/nats-server/v2 v2.12.3
