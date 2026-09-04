@@ -71,7 +71,7 @@ services:
         aliases:
           - localhost.localstack.cloud
   nats:
-    image: nats:2.12.3-scratch
+    image: nats:2.14.6-scratch
     command:
       - -c
       - /etc/nats/nats-server.conf
