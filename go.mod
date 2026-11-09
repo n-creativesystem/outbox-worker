@@ -24,7 +24,7 @@ require (
 	github.com/n-creativesystem/go-packages/lib/trace v1.0.0
 	github.com/nats-io/nats-server/v2 v2.12.3
 	github.com/nats-io/nats.go v1.48.0
-	github.com/rollbar/rollbar-go v1.4.5
+	github.com/rollbar/rollbar-go v1.4.8
 	github.com/samber/slog-rollbar/v2 v2.1.0
 	github.com/samber/slog-sentry/v2 v2.10.1
 	github.com/spf13/cobra v1.8.0
